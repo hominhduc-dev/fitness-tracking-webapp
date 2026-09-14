@@ -51,8 +51,72 @@ function normalizeDisplayParts(parts: string[]) {
     .trim()
 }
 
-function normalizeTextForComparison(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US")
+const NON_ALPHANUMERIC_PATTERN = /[^\p{L}\p{N}]+/gu
+
+function toComparableTokens(value: string) {
+  return value
+    .toLocaleLowerCase("en-US")
+    .replace(NON_ALPHANUMERIC_PATTERN, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+}
+
+function containsTokenSequence(segment: string[], sequence: string[]) {
+  if (sequence.length === 0 || sequence.length > segment.length) {
+    return false
+  }
+
+  for (let start = 0; start <= segment.length - sequence.length; start += 1) {
+    let matches = true
+    for (let offset = 0; offset < sequence.length; offset += 1) {
+      if (segment[start + offset] !== sequence[offset]) {
+        matches = false
+        break
+      }
+    }
+    if (matches) return true
+  }
+
+  return false
+}
+
+function isCoveredBySegments(segments: string[][], value: string) {
+  const tokens = toComparableTokens(value)
+  if (tokens.length === 0) return false
+  return segments.some((segment) => containsTokenSequence(segment, tokens))
+}
+
+/**
+ * The exercise name usually already carries the words a variation repeats —
+ * "Frontal" on top of "Frontal One-Arm Lat Pulldown". Anything the name (or an
+ * earlier prefix) already says is dropped so the label stays readable mid-set
+ * on a phone. Comparison is token based so "One-Arm" and "One Arm" match.
+ */
+function dropWordsAlreadyCovered(part: string, segments: string[][]) {
+  const words = part.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ""
+  if (isCoveredBySegments(segments, part)) return ""
+
+  return words.filter((word) => !isCoveredBySegments(segments, word)).join(" ")
+}
+
+/**
+ * Joins the qualifier parts in front of the exercise name, dropping every part
+ * — and every single word of a part — the name already contains.
+ */
+function buildLabelFromParts(prefixParts: string[], exerciseName: string) {
+  const segments = [toComparableTokens(exerciseName)]
+  const keptParts: string[] = []
+
+  for (const part of prefixParts) {
+    const kept = dropWordsAlreadyCovered(part, segments)
+    if (!kept) continue
+    keptParts.push(kept)
+    segments.push(toComparableTokens(kept))
+  }
+
+  return normalizeDisplayParts([...keptParts, exerciseName])
 }
 
 function buildExerciseDisplayName(input: ExerciseVariationLabelInput) {
@@ -72,7 +136,7 @@ function buildExerciseDisplayName(input: ExerciseVariationLabelInput) {
 
   if (isDefaultVariation(input)) {
     return exerciseEquipment
-      ? normalizeDisplayParts([exerciseEquipment, exerciseModifier, baseExerciseName])
+      ? buildLabelFromParts([exerciseEquipment, exerciseModifier], baseExerciseName)
       : rawExerciseName
   }
 
@@ -81,15 +145,10 @@ function buildExerciseDisplayName(input: ExerciseVariationLabelInput) {
   const equipment = variationParenthesisMatch?.[2]?.trim() || ""
 
   if (equipment) {
-    const modifier = normalizeDisplayParts(
-      normalizeTextForComparison(exerciseModifier) === normalizeTextForComparison(variationModifier)
-        ? [exerciseModifier]
-        : [exerciseModifier, variationModifier],
-    )
-    return normalizeDisplayParts([equipment, modifier, baseExerciseName])
+    return buildLabelFromParts([equipment, exerciseModifier, variationModifier], baseExerciseName)
   }
 
-  return normalizeDisplayParts([rawVariationName, exerciseModifier, baseExerciseName])
+  return buildLabelFromParts([rawVariationName, exerciseModifier], baseExerciseName)
 }
 
 function formatExerciseVariationLabel(input: ExerciseVariationLabelInput) {
