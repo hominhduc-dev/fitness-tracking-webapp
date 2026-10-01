@@ -9,7 +9,7 @@ import type { SerializedProfile } from "../../auth.service"
  *
  * Role enforcement lives here rather than in the route layer so that a service
  * called from anywhere — an HTTP handler, an AI tool call, a script — cannot skip
- * it. See CLAUDE.md, "Auth & access model".
+ * it.
  */
 
 /** `prisma` is null when DATABASE_URL is absent; every query path funnels through here. */

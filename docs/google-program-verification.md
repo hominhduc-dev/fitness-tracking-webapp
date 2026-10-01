@@ -45,4 +45,4 @@ Trước sửa, batch ghi tuần 1 mở từ 5 lên 7 cột kết quả, rồi m
 - Backend: toàn bộ suite đạt 258 tests, 8 tests AI integration bị skip. Các test Google tập trung có 23 ca.
 - Backend typecheck và production build passed. `git diff --check` không có lỗi whitespace.
 
-Harness kiểm tra thật của phiên này: `.codex/google-live-check.ts` (gitignored, dùng cấu hình backend hiện hữu, không chứa token/secret).
+Kiểm tra thật được chạy bằng một script cục bộ (không commit, dùng cấu hình backend hiện hữu, không chứa token/secret).

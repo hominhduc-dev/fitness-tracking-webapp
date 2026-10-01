@@ -1,7 +1,6 @@
 # TanStack Query migration
 
 Ngày kiểm tra: 2026-09-12. Nhánh: `feat/tanstack-query-client-cache`.
-Plan gốc: `C:\Users\PC\.claude\plans\t-i-p-d-ng-tanstack-elegant-valiant.md`.
 
 ## Trạng thái triển khai
 

@@ -41,10 +41,6 @@ export default [
       "next-env.d.ts",
       "lift-design-system/**",
       "**/*.config.mjs",
-      // Agent tooling checks out scratch git worktrees here. They hold a full copy
-      // of the tree, so `**/*.test.ts` overrides would match those files too and
-      // lint them without the backend parser config, failing on TS syntax.
-      ".claude/**",
     ],
   },
 
@@ -67,13 +63,13 @@ export default [
       },
     },
     rules: {
-      // Named exports only — see CLAUDE.md ground rule 4.
+      // Named exports only.
       "no-restricted-syntax": [
         "error",
         {
           selector: "ExportDefaultDeclaration",
           message:
-            "Frontend components use named exports (CLAUDE.md ground rule 4). Next.js route files are exempt via an override.",
+            "Frontend components use named exports. Next.js route files are exempt via an override.",
         },
       ],
     },
@@ -126,12 +122,12 @@ export default [
       },
     },
     rules: {
-      // Raw Error throws bypass the AppError -> HTTP status mapping (CLAUDE.md ground rule 2).
+      // Raw Error throws bypass the AppError -> HTTP status mapping.
       "no-restricted-syntax": [
         "error",
         {
           selector: "ThrowStatement > NewExpression[callee.name='Error']",
-          message: "Throw an AppError subclass instead of a raw Error (CLAUDE.md ground rule 2).",
+          message: "Throw an AppError subclass instead of a raw Error.",
         },
       ],
     },

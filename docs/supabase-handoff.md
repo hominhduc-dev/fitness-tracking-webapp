@@ -73,7 +73,7 @@ Luôn chạy với `</dev/null` hoặc từ terminal. Đừng pipe script vào `
 
 ### 4. Đổi frontend trên Vercel
 
-Project `v0-fitness-app-design`, môi trường Production:
+Project frontend trên Vercel, môi trường Production:
 - `NEXT_PUBLIC_SUPABASE_URL=https://bljmubatdtvuomucqmoj.supabase.co`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = anon/publishable key của Cloud. Lấy trong Supabase Dashboard → Project Settings → API Keys, hoặc biến `SUPABASE_ANON_KEY` trong `~/.config/yeahbuddy/cloud.env`.
 
