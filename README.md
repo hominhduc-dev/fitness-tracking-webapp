@@ -1,585 +1,214 @@
-# YeahBuddy Fitness
+<p align="center">
+  <img src="public/og-image.png" alt="YeahBuddy — Train, track, progress together" width="640" />
+</p>
 
-> An open-source full-stack fitness platform for trainees, coaches, and small coaching teams.
+<h1 align="center">YeahBuddy Fitness</h1>
 
-YeahBuddy helps trainees log workouts, track nutrition, monitor body metrics, follow coach-assigned programs, and review progress in one place. Coaches can build training programs, assign them to clients, review workout logs, leave feedback, and manage check-ins.
+<p align="center">
+  A full-stack coaching platform where personal trainers build programs and clients log every set, meal and check-in.
+  <br />
+  <a href="https://www.hominhduc.me"><strong>Live demo »</strong></a>
+</p>
 
-The app is built as a monorepo:
-
-- **Frontend:** Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn/ui
-- **Backend:** Express 4, TypeScript, Prisma 6
-- **Database/Auth:** PostgreSQL and Supabase Auth
-- **AI features:** optional Anthropic or OpenAI provider for workout and meal-plan generation
-
-UI copy is localized for Vietnamese and English.
+<p align="center">
+  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs" />
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white" />
+  <img alt="Express" src="https://img.shields.io/badge/Express-4-000000?logo=express" />
+  <img alt="Prisma" src="https://img.shields.io/badge/Prisma-6-2d3748?logo=prisma" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Supabase-3ecf8e?logo=supabase&logoColor=white" />
+</p>
 
 ---
 
-## Contents
+## Overview
 
-- [Features](#features)
-- [Screens and Roles](#screens-and-roles)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [System Diagrams](#system-diagrams)
-- [Repository Structure](#repository-structure)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Database Setup](#database-setup)
-- [Useful Scripts](#useful-scripts)
-- [Testing and Quality](#testing-and-quality)
-- [API Overview](#api-overview)
-- [Project Conventions](#project-conventions)
-- [Deployment Notes](#deployment-notes)
-- [Contributing](#contributing)
-- [Security](#security)
-- [Third-party Assets](#third-party-assets)
-- [License](#license)
+YeahBuddy started as a workout logger and grew into a platform for small coaching businesses. It serves three roles, each with its own workspace:
+
+- **Trainees** follow the program their coach assigned, log sets in a focused session screen, track meals, weight and recovery, and see their progress over time.
+- **Coaches** build multi-week programs, assign and adjust them per client, review logs and check-ins, and leave feedback on individual sessions.
+- **Admins** manage users, approve coach sign-ups, curate the shared exercise and food libraries, and read audit logs.
+
+The whole interface is available in Vietnamese and English and installs as a PWA on phones.
+
+### At a glance
+
+| | |
+|---|---|
+| **Scope** | 28 pages, 14 API route modules, 38 database models, 60 migrations |
+| **Codebase** | ~110k lines of TypeScript across a Next.js frontend and an Express backend |
+| **Tests** | 150+ test files, ~1,300 tests (Vitest + Testing Library) |
+| **History** | ~980 commits since December 2025, Conventional Commits, PR-based workflow with CI |
 
 ---
 
 ## Features
 
-### For Trainees
+### Training
+- Session screen built for the gym floor: set-by-set logging of weight, reps and RIR, previous-performance hints, rest timer, and drafts saved on the server so a session survives a closed tab or a dead phone battery.
+- Multi-week program editor with drag-and-drop day slots, week copy/paste, reusable routines and per-set targets (rep ranges, RIR, intensity techniques such as drop sets, rest-pause and myo-reps).
+- Weekly schedule that slides missed sessions forward instead of marking them failed.
+- Volume and recovery analysis per muscle group, combining logged volume, soreness check-ins and wearable data to suggest when to add or cut sets.
 
-- Log workouts with sets, reps, weight, RIR, completion state, and notes
-- Follow coach-assigned programs or create personal routines
-- View weekly schedule and today's workout
-- Track workout history, volume, streaks, frequency, and PRs
-- Log meals and food items with calories and macros
-- Track weight and body measurements
-- Generate workout programs and meal plans with an optional AI provider
-- Discover coaches and request coaching
+### Coaching
+- Coach dashboard with recent logs, compliance and per-client status.
+- Per-client program adjustments without changing the shared template.
+- Two-way Google Sheets integration: import a program from a sheet and export client logs back to it.
+- Coach discovery and connection requests between trainees and coaches.
 
-### For Coaches
+### Nutrition and body metrics
+- Meal logging against a food database with calories and macros.
+- Weight log, body measurements and progress charts.
+- Huawei Health sync for sleep, heart rate and weight.
 
-- Create, edit, archive, and assign training programs
-- Build workouts with ordered exercises and target sets
-- Monitor trainee compliance and weekly activity
-- Review trainee logs, body metrics, check-ins, and recent PRs
-- Comment on workout logs
-- Import programs from Google Sheets when configured
-- Manage a coach-owned exercise library
+### AI assistance
+- Program and single-workout generation from a trainee's goal, experience, equipment and injuries.
+- Goal-aware coaching rules (hypertrophy, strength, powerbuilding, fat loss, endurance, rehab…) that drive both AI prompts and RIR targets.
+- AI output is validated against strict schemas and only uses exercises that exist in the library; nothing is saved until the user reviews and accepts it.
 
-### For Admins
-
-- Manage users, roles, and active state
-- Review coach requests and coach-trainee connections
-- Curate global exercise and food data
-- Inspect platform metrics and audit logs
-
-### Cross-cutting
-
-- Supabase email/password and OAuth auth flow
-- Cookie-based SSR sessions through `@supabase/ssr`
-- Server-side role enforcement
-- Consistent API error envelope
-- Structured backend logging
-- Rate limits for authenticated and AI-heavy routes
-- Web push notifications for reminders and coach/trainee activity
-- Excel-style export helpers and optional n8n webhook export
+### Platform
+- Supabase Auth with email/password, Google OAuth and Cloudflare Turnstile.
+- Role checks enforced on the server for every request.
+- Web push notifications for reminders and coach/trainee activity.
+- Offline-capable PWA, dark mode, and a semantic color system checked in CI.
 
 ---
 
-## Screens and Roles
+## Tech stack
 
-| Role | Default Area | Main Capabilities |
-|---|---|---|
-| `trainee` | `/dashboard` | Training, meals, progress, schedule, AI generation, coach discovery |
-| `coach` | `/coach` | Programs, assignments, trainee monitoring, check-ins, workout feedback |
-| `admin` | `/admin` | Platform operations, users, library curation, audit logs |
-
-Public users land on `/` and can open the auth modal. After login, the app redirects users to the correct role area.
-
----
-
-## Tech Stack
-
-### Frontend
-
-- Next.js 16 with App Router
-- React 19
-- TypeScript 5
-- Tailwind CSS v4
-- shadcn/ui and Radix UI primitives
-- Recharts
-- TanStack Query
-- `@supabase/ssr`
-- `lucide-react`
-
-### Backend
-
-- Node.js
-- Express 4
-- TypeScript
-- Prisma 6
-- PostgreSQL
-- Supabase Auth and Storage
-- Zod validation
-- Vitest
-
-### Optional Integrations
-
-- Anthropic or OpenAI for AI workout and meal-plan generation
-- Google OAuth, Google Sheets, and Drive APIs for program imports
-- Huawei Health Service Kit cloud sync for trainee recovery/activity data
-- Web Push (VAPID) for reminder and activity notifications
-- Cloudinary for exercise media hosting
-- n8n webhook for workout-log export
+| Layer | Technologies |
+|---|---|
+| Frontend | Next.js 16 (App Router, SSR + streaming), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Radix UI, TanStack Query, Recharts |
+| Backend | Node.js, Express 4, TypeScript, Zod, Prisma 6 |
+| Data & auth | PostgreSQL on Supabase, Supabase Auth via `@supabase/ssr` cookie sessions |
+| Integrations | Anthropic / OpenAI (provider abstraction), Google Sheets & Drive, Huawei Health Kit, Web Push (VAPID), Cloudinary |
+| Quality | Vitest, Testing Library, ESLint, GitHub Actions CI |
+| Hosting | Vercel (frontend), Docker on a VPS (backend) |
 
 ---
 
 ## Architecture
 
-![YeahBuddy system architecture](docs/architecture.png)
+![System architecture](docs/architecture.png)
 
-At a high level:
+1. The browser talks only to the Next.js app. Requests to `/backend/api/*` are proxied to the Express API.
+2. Server components fetch data on the server; interactive screens hydrate into client components backed by TanStack Query.
+3. The API verifies the Supabase access token, loads the user's profile and role, and runs the request through Zod validation and the service layer.
+4. Prisma reads and writes PostgreSQL. AI providers, Google and Huawei are called only from the backend, so no third-party secret ever reaches the browser.
 
-1. The browser uses the Next.js frontend.
-2. Frontend requests to `/backend/api/*` are rewritten to the Express backend.
-3. The frontend sends the Supabase access token with authenticated API calls.
-4. The backend verifies the token, syncs the local profile, enforces role access, and runs business logic.
-5. Prisma reads and writes application data in PostgreSQL.
-6. Optional AI and import/export providers are called only by the backend.
+### Engineering decisions worth a look
 
-Editable diagrams are available in:
+- **One error contract.** Every route returns `{ data, error, meta }`. Services throw typed `AppError` subclasses, a central handler formats them, and 5xx details never leave the server. ESLint forbids throwing a raw `Error`.
+- **Authorization lives in the service layer**, not in routes. A service called from an HTTP handler, an AI tool call or a script cannot skip its role check.
+- **Rendering per route.** Auth-gated pages render on the server, data-heavy dashboards stream with Suspense, and highly interactive screens such as the workout session are client-rendered.
+- **AI kept on a short leash.** Prompts treat user text as untrusted, outputs go through schema validation and catalogue lookups, and generated plans are drafts until accepted.
+- **Every schema change ships with a migration**, and CI runs typecheck, tests, lint and production builds for both packages on each pull request.
 
-- [`docs/architecture.drawio`](docs/architecture.drawio)
-- [`docs/use-cases.drawio`](docs/use-cases.drawio)
-- [`docs/sequence-diagrams.drawio`](docs/sequence-diagrams.drawio)
-- [`docs/erd-system/README.md`](docs/erd-system/README.md)
-
-## System Diagrams
-
-Archify diagrams are available as standalone interactive HTML files with pan, zoom, view focus, and export controls:
-
-| Diagram | HTML | Spec |
-|---|---|---|
-| ERD overview | [`docs/archify/erd.html`](docs/archify/erd.html) | [`docs/archify/erd.architecture.json`](docs/archify/erd.architecture.json) |
-| Class and module overview | [`docs/archify/class.html`](docs/archify/class.html) | [`docs/archify/class.architecture.json`](docs/archify/class.architecture.json) |
-| Use case map | [`docs/archify/use-case.html`](docs/archify/use-case.html) | [`docs/archify/use-case.workflow.json`](docs/archify/use-case.workflow.json) |
-| Core request sequence | [`docs/archify/sequence.html`](docs/archify/sequence.html) | [`docs/archify/sequence.sequence.json`](docs/archify/sequence.sequence.json) |
-
-The Archify source specs are validated with the `showcase` quality profile before the HTML artifacts are generated.
+More diagrams (ERD, class, sequence and use-case diagrams) are in [`docs/`](docs).
 
 ---
 
-## Repository Structure
+## Project structure
 
 ```text
 .
-├── app/                         # Next.js App Router pages and layouts
-│   ├── (shell)/                 # Authenticated app shell
-│   ├── auth/callback/           # Supabase OAuth/email callback
-│   ├── reset-password/          # Password reset flow
-│   └── page.tsx                 # Public landing page
-├── components/                  # Feature UI and shadcn/ui primitives
-├── lib/                         # Frontend API clients, auth, i18n, types
-├── public/                      # Static assets
-├── docs/                        # Architecture, ERD, sequence, and use-case docs
+├── app/                 # Next.js routes: landing, auth, (shell) app area per role
+├── components/          # Feature components and shadcn/ui primitives
+├── lib/                 # API clients, auth, i18n messages, shared types
+├── public/              # Icons, PWA manifest assets, offline page
 ├── backend/
-│   ├── prisma/                  # Canonical Prisma schema and migrations
-│   ├── src/
-│   │   ├── config/              # Environment parsing
-│   │   ├── lib/                 # Prisma, Supabase, AI, provider utilities
-│   │   ├── middleware/          # Error handler, validation, rate limits
-│   │   ├── routes/              # Express routers
-│   │   ├── services/            # Business logic
-│   │   └── scripts/             # Seed/admin/helper scripts
-│   ├── Dockerfile
-│   └── package.json
-├── docker-compose.yml           # Backend production-style service
-├── next.config.mjs              # Frontend config and backend rewrite
-├── package.json                 # Frontend/root scripts
-└── README.md
+│   ├── prisma/          # Schema and migrations
+│   └── src/
+│       ├── routes/      # Express routers + Zod request schemas
+│       ├── services/    # Business logic, AI, integrations
+│       ├── domain/      # Pure domain rules (e.g. training-goal policy)
+│       ├── middleware/  # Auth, validation, rate limits, error handler
+│       └── scripts/     # Seeds and admin tooling
+└── docs/                # Architecture, ERD, sequence and use-case diagrams
 ```
-
-> Note: `backend/prisma/` is the canonical Prisma folder. Do not create new migrations in the root-level `prisma/` folder if one exists in your checkout.
 
 ---
 
-## Getting Started
+## Running locally
 
-### Prerequisites
-
-- Node.js 22 recommended
-- npm
-- A Supabase project with Auth and PostgreSQL enabled
-- Optional: Anthropic or OpenAI key for AI features
-
-### 1. Clone the Repository
+**Requirements:** Node.js 22, npm, and a Supabase project (Auth + PostgreSQL). An Anthropic or OpenAI key is optional and only needed for AI features.
 
 ```bash
-git clone https://github.com/hominhduc-dev/fitness-webapp-platform.git
-cd fitness-webapp-platform
-```
+git clone https://github.com/hominhduc-dev/fitness-tracking-webapp.git
+cd fitness-tracking-webapp
 
-### 2. Install Dependencies
-
-```bash
 npm install
 npm install --prefix backend
-```
 
-### 3. Create Environment Files
+cp .env.local.example .env.local        # Supabase URL + publishable key
+cp backend/.env.example backend/.env    # database URLs, Supabase keys, optional integrations
 
-```bash
-cp .env.local.example .env.local
-cp backend/.env.example backend/.env
-```
-
-Fill in the Supabase and database values described below.
-
-### 4. Generate Prisma Client
-
-```bash
 npm run prisma:generate
+npm run prisma:migrate                  # apply migrations to your database
+npm run seed:exercises && npm run seed:foods   # optional reference data
+
+npm run dev            # frontend on http://localhost:3000
+npm run dev:backend    # API on http://localhost:4000 (second terminal)
 ```
 
-### 5. Apply Database Migrations
+<details>
+<summary><strong>Environment variables</strong></summary>
 
-For a new local/dev database:
-
-```bash
-npm run prisma:migrate
-```
-
-For production or CI deploys:
-
-```bash
-npm run prisma:deploy
-```
-
-### 6. Seed Optional Reference Data
-
-```bash
-npm run seed:exercises
-npm run seed:foods
-```
-
-### 7. Start the Apps
-
-Open two terminals:
-
-```bash
-npm run dev
-```
-
-```bash
-npm run dev:backend
-```
-
-Then visit [http://localhost:3000](http://localhost:3000).
-
----
-
-## Environment Variables
-
-### Frontend: `.env.local`
+Frontend (`.env.local`):
 
 ```bash
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:4000
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-or-publishable-key
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=your-cloudflare-turnstile-site-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your-turnstile-site-key
 ```
 
-### Backend: `backend/.env`
-
-Required for the core app:
+Backend (`backend/.env`), required:
 
 ```bash
 PORT=4000
 FRONTEND_URL=http://localhost:3000
-
-DATABASE_URL=postgresql://...
-DIRECT_URL=postgresql://...
-
+DATABASE_URL=postgresql://...      # pooled connection (port 6543)
+DIRECT_URL=postgresql://...        # direct connection for migrations (port 5432)
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-SUPABASE_ANON_KEY=your-anon-or-publishable-key
+SUPABASE_ANON_KEY=your-publishable-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-Optional integrations:
+Optional integrations: `AI_PROVIDER`, `AI_MODEL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_OAUTH_*`, `HUAWEI_*`, `VAPID_*`, `CLOUDINARY_*`. See `backend/.env.example` for the full list.
 
-```bash
-# AI generation
-AI_PROVIDER=anthropic
-AI_MODEL=claude-haiku-4-5-20251001
-ANTHROPIC_API_KEY=
-OPENAI_API_KEY=
-AI_API_KEY=
-AI_BASE_URL=
-AI_JSON_MODE=true
+</details>
 
-# n8n workout-log export
-N8N_LOGS_WEBHOOK_URL=
+<details>
+<summary><strong>Useful scripts</strong></summary>
 
-# Google Sheets program import
-GOOGLE_OAUTH_CLIENT_ID=
-GOOGLE_OAUTH_CLIENT_SECRET=
-GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/backend/api/coach/google/callback
-GOOGLE_TOKEN_ENCRYPTION_KEY=
-
-# Huawei Health Service Kit (optional)
-HUAWEI_CLIENT_ID=
-HUAWEI_CLIENT_SECRET=
-HUAWEI_OAUTH_REDIRECT_URI=http://localhost:3000/backend/api/integrations/huawei/callback
-HUAWEI_HEALTH_API_BASE=https://health-api.cloud.huawei.com
-HUAWEI_TOKEN_ENCRYPTION_KEY=
-
-# Web push notifications (VAPID)
-VAPID_PUBLIC_KEY=
-VAPID_PRIVATE_KEY=
-VAPID_SUBJECT=mailto:notifications@yeahbuddy.fit
-
-# Cloudinary (exercise media hosting and sync scripts)
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-```
-
-Never expose or commit `SUPABASE_SERVICE_ROLE_KEY`, database URLs, OAuth secrets, or AI API keys.
-
----
-
-## Database Setup
-
-This project uses Prisma migrations under `backend/prisma/migrations`.
-
-Common commands:
-
-```bash
-npm run prisma:generate   # Generate Prisma Client
-npm run prisma:migrate    # Create/apply migrations in development
-npm run prisma:deploy     # Apply existing migrations in production/CI
-npm run prisma:studio     # Open Prisma Studio
-```
-
-For Supabase, use:
-
-- `DATABASE_URL`: pooled connection, usually PgBouncer on port `6543`
-- `DIRECT_URL`: direct database connection, usually port `5432`, used for migrations
-
-If the schema changes, always commit:
-
-- `backend/prisma/schema.prisma`
-- the generated migration folder under `backend/prisma/migrations`
-
-You do not commit generated Prisma Client files from `node_modules`.
-
----
-
-## Useful Scripts
-
-### Root
-
-| Script | Description |
+| Command | What it does |
 |---|---|
-| `npm run dev` | Start Next.js dev server on port `3000` |
-| `npm run build` | Build the frontend |
-| `npm run start` | Start the built frontend |
-| `npm run lint` | Run ESLint |
-| `npm run typecheck` | Generate Next types and run TypeScript checks |
-| `npm run test` | Run Vitest tests |
-| `npm run dev:backend` | Start the backend through the root script |
-| `npm run build:backend` | Build the backend |
-| `npm run prisma:generate` | Generate Prisma Client for backend |
-| `npm run prisma:migrate` | Run Prisma migration dev |
-| `npm run prisma:deploy` | Deploy Prisma migrations |
-| `npm run seed:exercises` | Seed exercise data |
-| `npm run seed:foods` | Seed food data |
+| `npm run dev` / `npm run dev:backend` | Start the frontend / API in watch mode |
+| `npm run build` / `npm run build:backend` | Production builds |
+| `npm run lint` | ESLint for both packages |
+| `npm run typecheck` | TypeScript check for the frontend |
+| `npm run test` | Frontend tests |
+| `npm --prefix backend run test` | Backend tests |
+| `npm run prisma:studio` | Browse the database |
 | `npm run create:admin` | Create an admin account |
 
-### Backend
-
-| Script | Description |
-|---|---|
-| `npm --prefix backend run dev` | Start Express with `tsx watch` |
-| `npm --prefix backend run build` | Compile TypeScript to `backend/dist` |
-| `npm --prefix backend run start` | Run the compiled backend |
-| `npm --prefix backend run typecheck` | Backend TypeScript check |
-| `npm --prefix backend run test` | Backend Vitest suite |
-| `npm --prefix backend run prisma:validate` | Validate Prisma schema |
+</details>
 
 ---
 
-## Testing and Quality
+## Author
 
-Recommended checks before opening a PR:
+**Ho Minh Duc** — designed and built the product end to end: data model, API, web app, integrations and deployment.
 
-```bash
-npm run lint
-npm run typecheck
-npm run test
-npm run build
-npm run build:backend
-```
+- Live app: [hominhduc.me](https://www.hominhduc.me)
+- GitHub: [@hominhduc-dev](https://github.com/hominhduc-dev)
 
-The backend test suite covers:
+## Acknowledgements
 
-- environment parsing and production fail-fast behavior
-- error envelope formatting
-- request validation
-- auth and registration behavior
-- AI output validation
-- nutrition helpers
-- workout and coach-domain business logic
-
-Tests are designed to avoid reading your real `.env` during test runs.
-
----
-
-## API Overview
-
-All backend routes are mounted under `/api`. The frontend reaches them through `/backend/api/*`.
-
-Public-ish endpoints:
-
-- `GET /api/health`
-- `GET /api/health/database`
-- `GET /api/health/supabase`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-- `POST /api/auth/forgot-password`
-
-Authenticated trainee areas:
-
-- `/api/dashboard`
-- `/api/workouts`
-- `/api/meals`
-- `/api/foods`
-- `/api/progress`
-- `/api/integrations/huawei` (Huawei Health connection and sync)
-- `/api/exercises`
-- `/api/notifications`
-- `/api/ai`
-
-Coach areas:
-
-- `/api/coach/dashboard`
-- `/api/coach/programs`
-- `/api/coach/trainees`
-- `/api/coach/exercises`
-- `/api/coach/requests`
-- `/api/coach/workout-logs/:id/comments`
-- `/api/coach/google` (Google Sheets connect and import)
-
-Admin areas:
-
-- `/api/admin/dashboard`
-- `/api/admin/users`
-- `/api/admin/connections`
-- `/api/admin/programs`
-- `/api/admin/exercises`
-- `/api/admin/audit-logs`
-
-Most API responses follow this shape:
-
-```json
-{
-  "data": null,
-  "error": null,
-  "meta": null
-}
-```
-
-Some legacy/auth endpoints return flatter resource payloads. New endpoints should prefer the envelope.
-
----
-
-## Project Conventions
-
-- Use Prisma for database access. Raw SQL belongs in migration files only.
-- Keep database migrations in `backend/prisma/migrations`.
-- Backend errors should use `AppError` or a subclass.
-- 5xx errors should not expose internal details to clients.
-- Frontend components use named exports where practical.
-- Keep service-role keys and provider secrets server-side only.
-- Commit messages follow Conventional Commits, for example `feat(workout): add weekly schedule view`.
-
----
-
-## Deployment Notes
-
-The frontend and backend can be deployed separately.
-
-### Frontend
-
-The frontend is a standard Next.js app. Set:
-
-```bash
-NEXT_PUBLIC_APP_URL=https://your-domain.example
-NEXT_PUBLIC_API_URL=https://your-backend-domain.example
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=...
-```
-
-`NEXT_PUBLIC_TURNSTILE_SITE_KEY` is public. Store its matching secret only in Supabase Dashboard → Authentication → Attack Protection. Deploy the frontend variable before enabling CAPTCHA protection in Supabase.
-
-### Backend
-
-The repository includes a production-style Docker setup:
-
-```bash
-docker compose build backend
-docker compose run --rm backend npx prisma migrate deploy
-docker compose up -d backend
-```
-
-After every schema change, deploy code and Prisma migrations together. A common production failure is running migrations against the database while the backend container still uses an older generated Prisma Client.
-
----
-
-## Contributing
-
-Contributions are welcome.
-
-Good first areas:
-
-- UI polish and accessibility
-- Vietnamese and English copy improvements
-- test coverage around coach and trainee workflows
-- documentation improvements
-- import/export integrations
-- performance improvements for Prisma queries
-
-Suggested workflow:
-
-1. Fork the repository.
-2. Create a branch from `main`.
-3. Make a focused change.
-4. Run the checks in [Testing and Quality](#testing-and-quality).
-5. Open a pull request with a clear description and screenshots for UI changes.
-
-Please do not include real user data, credentials, screenshots with private data, or production `.env` values in issues or pull requests.
-
----
-
-## Security
-
-If you find a security issue, please do not open a public issue with exploit details. Contact the maintainer privately first.
-
-Important reminders for local and production setups:
-
-- Never commit `.env`, database URLs, API keys, or OAuth secrets.
-- Never expose `SUPABASE_SERVICE_ROLE_KEY` to browser code.
-- Review Supabase RLS and table access before exposing a new table through public APIs.
-- Keep auth and authorization checks server-side.
-
----
-
-## Third-party Assets
-
-The body map SVG data used by `components/body/` is derived from [`react-native-body-highlighter`](https://github.com/HichamELBSI/react-native-body-highlighter), MIT licensed.
-
-Generated files should be regenerated through the project scripts instead of edited by hand.
-
----
+The body-map SVG data in `components/body/` is derived from [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter) (MIT).
 
 ## License
 
-No license file is included yet. If you intend to make this repository truly open source, add a `LICENSE` file before publishing. MIT is a simple default for most app templates; choose something else if you need stronger conditions.
+The source is published for portfolio review. No open-source license has been granted yet, so all rights are reserved by the author.
